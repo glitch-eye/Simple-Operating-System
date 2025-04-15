@@ -50,28 +50,19 @@
   *@vmaend: vma end
   *
   */
- struct vm_rg_struct *get_vm_area_node_at_brk(struct pcb_t *caller, int vmaid, int size, int alignedsz)
- {
-   struct vm_rg_struct *newrg;
-   /* TODO retrive current vma to obtain newrg, current comment out due to compiler redundant warning*/
-   struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
- 
-   newrg = malloc(sizeof(struct vm_rg_struct));
- 
-   /* TODO: update the newrg boundary
-   // newrg->rg_start = ...
-   // newrg->rg_end = ...
-   */
-   if (!newrg || !cur_vma)
-   {
-     return NULL;
-   }
-   newrg->rg_start = cur_vma->sbrk;
-   newrg->rg_end = cur_vma->sbrk + alignedsz;
-   newrg->rg_next = NULL;
-   cur_vma->sbrk = newrg->rg_end;
-   return newrg;
- }
+struct vm_rg_struct *get_vm_area_node_at_brk(struct pcb_t *caller, int vmaid, int size, int alignedsz)
+{
+  struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
+  struct vm_rg_struct *newrg = malloc(sizeof(struct vm_rg_struct));
+
+  if (!cur_vma) return NULL;
+
+  newrg->rg_start = cur_vma->sbrk;
+  newrg->rg_end   = newrg->rg_start + alignedsz;
+  newrg->rg_next  = NULL;
+
+  return newrg;
+}
  
  /*validate_overlap_vm_area
   *@caller: caller
@@ -80,19 +71,20 @@
   *@vmaend: vma end
   *
   */
- int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int vmaend)
- {
-   struct vm_area_struct *vma = caller->mm->mmap;
-   struct vm_rg_struct *cur = vma->vm_freerg_list;
-   /* TODO validate the planned memory area is not overlapped */
-   while (cur != NULL)
-   {
-     if (!(vmaend <= cur->rg_start || vmastart >= cur->rg_end))
-       return -1;
-     cur = cur->rg_next;
-   }
-   return 0;
- }
+int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int vmaend)
+{
+  struct vm_area_struct *vma = get_vma_by_num(caller->mm, vmaid);
+  struct vm_rg_struct *it = vma->vm_freerg_list;
+
+  while (it != NULL)
+  {
+    if (!(vmaend <= it->rg_start || vmastart >= it->rg_end))
+      return -1; // Overlap
+    it = it->rg_next;
+  }
+
+  return 0;
+}
  
  /*inc_vma_limit - increase vm area limits to reserve space for new variable
   *@caller: caller
@@ -101,34 +93,42 @@
   *
   */
  int inc_vma_limit(struct pcb_t *caller, int vmaid, int inc_sz)
- {
-   struct vm_rg_struct *newrg = malloc(sizeof(struct vm_rg_struct));
-   int inc_amt = PAGING_PAGE_ALIGNSZ(inc_sz);
-   int incnumpage = inc_amt / PAGING_PAGESZ;
-   struct vm_rg_struct *area = get_vm_area_node_at_brk(caller, vmaid, inc_sz, inc_amt);
-   struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
- 
-   int old_end = cur_vma->vm_end;
- 
-   /*Validate overlap of obtained region */
-   if (validate_overlap_vm_area(caller, vmaid, area->rg_start, area->rg_end) < 0)
-     return -1; /*Overlap and failed allocation */
- 
-   /* TODO: Obtain the new vm area based on vmaid */
-   // cur_vma->vm_end...
-   //  inc_limit_ret...
-   if (!area || !cur_vma)
-     return -1;
- 
-   cur_vma->vm_end = area->rg_end;
-   int inc_limit_ret = cur_vma->vm_end - cur_vma->vm_start;
- 
-   if (vm_map_ram(caller, area->rg_start, area->rg_end,
-                  old_end, incnumpage, newrg) < 0)
-     return -1; /* Map the memory to MEMRAM */
- 
-   return inc_limit_ret;
- }
+{
+  int inc_amt = PAGING_PAGE_ALIGNSZ(inc_sz);
+  int incnumpage = inc_amt / PAGING_PAGESZ;
+
+  struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
+  if (!cur_vma) return -1;
+
+  struct vm_rg_struct *area = get_vm_area_node_at_brk(caller, vmaid, inc_sz, inc_amt);
+  if (!area) return -1;
+
+  int old_end = cur_vma->vm_end;
+
+  if (validate_overlap_vm_area(caller, vmaid, area->rg_start, area->rg_end) < 0)
+    return -1;
+
+  if (vm_map_ram(caller, area->rg_start, area->rg_end,
+                 old_end, incnumpage, area) < 0)
+    return -1;
+
+  // Cập nhật giới hạn VM
+  cur_vma->vm_end = area->rg_end;
+  cur_vma->sbrk   = area->rg_end;
+
+  // Thêm vùng mới vào danh sách free
+  area->rg_next = NULL;
+  if (cur_vma->vm_freerg_list == NULL)
+    cur_vma->vm_freerg_list = area;
+  else {
+    struct vm_rg_struct *it = cur_vma->vm_freerg_list;
+    while (it->rg_next != NULL)
+      it = it->rg_next;
+    it->rg_next = area;
+  }
+
+  return 0;
+}
  
  // #endif
  
