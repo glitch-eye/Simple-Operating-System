@@ -53,16 +53,16 @@
 struct vm_rg_struct *get_vm_area_node_at_brk(struct pcb_t *caller, int vmaid, int size, int alignedsz)
 {
   struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
-  struct vm_rg_struct *newrg = malloc(sizeof(struct vm_rg_struct));
-
   if (!cur_vma) return NULL;
 
+  struct vm_rg_struct *newrg = malloc(sizeof(struct vm_rg_struct));
   newrg->rg_start = cur_vma->sbrk;
-  newrg->rg_end   = newrg->rg_start + alignedsz;
-  newrg->rg_next  = NULL;
+  newrg->rg_end = newrg->rg_start + alignedsz;
+  newrg->rg_next = NULL;
 
   return newrg;
 }
+
  
  /*validate_overlap_vm_area
   *@caller: caller
@@ -76,15 +76,16 @@ int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int 
   struct vm_area_struct *vma = get_vma_by_num(caller->mm, vmaid);
   struct vm_rg_struct *it = vma->vm_freerg_list;
 
-  while (it != NULL)
-  {
-    if (!(vmaend <= it->rg_start || vmastart >= it->rg_end))
-      return -1; // Overlap
+  while (it != NULL) {
+    if (!(vmaend <= it->rg_start || vmastart >= it->rg_end)) {
+      return -1; // Overlap detected
+    }
     it = it->rg_next;
   }
 
   return 0;
 }
+
  
  /*inc_vma_limit - increase vm area limits to reserve space for new variable
   *@caller: caller
@@ -92,7 +93,7 @@ int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int 
   *@inc_sz: increment size
   *
   */
- int inc_vma_limit(struct pcb_t *caller, int vmaid, int inc_sz)
+int inc_vma_limit(struct pcb_t *caller, int vmaid, int inc_sz)
 {
   int inc_amt = PAGING_PAGE_ALIGNSZ(inc_sz);
   int incnumpage = inc_amt / PAGING_PAGESZ;
@@ -108,15 +109,12 @@ int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int 
   if (validate_overlap_vm_area(caller, vmaid, area->rg_start, area->rg_end) < 0)
     return -1;
 
-  if (vm_map_ram(caller, area->rg_start, area->rg_end,
-                 old_end, incnumpage, area) < 0)
+  if (vm_map_ram(caller, area->rg_start, area->rg_end, old_end, incnumpage, area) < 0)
     return -1;
 
-  // Cập nhật giới hạn VM
   cur_vma->vm_end = area->rg_end;
-  cur_vma->sbrk   = area->rg_end;
+  cur_vma->sbrk = area->rg_end;
 
-  // Thêm vùng mới vào danh sách free
   area->rg_next = NULL;
   if (cur_vma->vm_freerg_list == NULL)
     cur_vma->vm_freerg_list = area;
@@ -129,6 +127,7 @@ int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int 
 
   return 0;
 }
+
  
  // #endif
  
