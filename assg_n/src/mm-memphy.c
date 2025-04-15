@@ -163,7 +163,16 @@
    /*TODO dump memphy contnt mp->storage
     *     for tracing the memory content
     */
-   return mp ? mp->storage : NULL;
+   if (!mp || !mp->storage)
+   return -1;
+printf("===== PHYSICAL MEMORY DUMP =====\n");
+for (int i = 0; i < mp->maxsz; i++) {
+   if (mp->storage[i] != 0) {
+       printf("BYTE %08x: %d\n", i, mp->storage[i]);
+   }
+}
+printf("===== PHYSICAL MEMORY END-DUMP =====\n");
+return 0;
  }
  
  int MEMPHY_put_freefp(struct memphy_struct *mp, int fpn)

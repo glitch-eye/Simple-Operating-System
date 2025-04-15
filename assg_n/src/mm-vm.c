@@ -74,6 +74,8 @@ struct vm_rg_struct *get_vm_area_node_at_brk(struct pcb_t *caller, int vmaid, in
 int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int vmaend)
 {
   struct vm_area_struct *vma = get_vma_by_num(caller->mm, vmaid);
+  if(!vma)
+  return -1;
   struct vm_rg_struct *it = vma->vm_freerg_list;
 
   while (it != NULL) {
@@ -99,10 +101,12 @@ int inc_vma_limit(struct pcb_t *caller, int vmaid, int inc_sz)
   int incnumpage = inc_amt / PAGING_PAGESZ;
 
   struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
-  if (!cur_vma) return -1;
+  if (!cur_vma) 
+  return -1;
 
   struct vm_rg_struct *area = get_vm_area_node_at_brk(caller, vmaid, inc_sz, inc_amt);
-  if (!area) return -1;
+  if (!area) 
+  return -1;
 
   int old_end = cur_vma->vm_end;
 
