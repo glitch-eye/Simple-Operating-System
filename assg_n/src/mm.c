@@ -7,6 +7,7 @@
 #include "mm.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 /*
  * init_pte - Initialize PTE entry
