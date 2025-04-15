@@ -92,7 +92,6 @@ int vmap_page_range(struct pcb_t *caller, int addr, int pgnum, struct framephy_s
   while (pgit < pgnum && fpit != NULL) {
     pte_set_fpn(&caller->mm->pgd[pgn + pgit], fpit->fpn);
     enlist_pgn_node(&caller->mm->fifo_pgn, pgn + pgit);
-
     fpit = fpit->fp_next;
     pgit++;
   }
@@ -112,31 +111,28 @@ int alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_struc
   int pgit, fpn;
   struct framephy_struct *head = NULL, *tail = NULL;
 
-  for (pgit = 0; pgit < req_pgnum; pgit++)
-  {
-    if (MEMPHY_get_freefp(caller->mram, &fpn) == 0)
-    {
+  for (pgit = 0; pgit < req_pgnum; pgit++) {
+    if (MEMPHY_get_freefp(caller->mram, &fpn) == 0) {
       struct framephy_struct *newfp = malloc(sizeof(struct framephy_struct));
       newfp->fpn = fpn;
       newfp->fp_next = NULL;
       newfp->owner = caller->mm;
 
-      if (head == NULL)
+      if (head == NULL) {
         head = tail = newfp;
-      else {
+      } else {
         tail->fp_next = newfp;
         tail = newfp;
       }
-    }
-    else
-    {
-      return -3000; // not enough RAM
+    } else {
+      return -3000; // Out of memory
     }
   }
 
   *frm_lst = head;
   return 0;
 }
+
 
 
 /*
@@ -151,14 +147,12 @@ int alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_struc
 int vm_map_ram(struct pcb_t *caller, int astart, int aend, int mapstart, int incpgnum, struct vm_rg_struct *ret_rg)
 {
   struct framephy_struct *frm_lst = NULL;
-  int ret_alloc;
+  int ret_alloc = alloc_pages_range(caller, incpgnum, &frm_lst);
 
-  ret_alloc = alloc_pages_range(caller, incpgnum, &frm_lst);
   if (ret_alloc < 0 && ret_alloc != -3000)
     return -1;
 
-  if (ret_alloc == -3000)
-  {
+  if (ret_alloc == -3000) {
 #ifdef MMDBG
     printf("OOM: vm_map_ram out of memory \n");
 #endif
@@ -211,8 +205,8 @@ int init_mm(struct mm_struct *mm, struct pcb_t *caller)
   vma0->sbrk = 0;
   vma0->vm_mm = mm;
   vma0->vm_next = NULL;
-  vma0->vm_freerg_list = NULL;
 
+  vma0->vm_freerg_list = NULL;
   struct vm_rg_struct *first_rg = init_vm_rg(0, 0);
   enlist_vm_rg_node(&vma0->vm_freerg_list, first_rg);
 
@@ -221,6 +215,7 @@ int init_mm(struct mm_struct *mm, struct pcb_t *caller)
 
   return 0;
 }
+
 
 struct vm_rg_struct *init_vm_rg(int rg_start, int rg_end)
 {
