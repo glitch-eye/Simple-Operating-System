@@ -40,7 +40,7 @@ int __sys_killall(struct pcb_t *caller, struct sc_regs* regs)
             for (int j = 0; j < list->size; j++) { \
                 struct pcb_t *proc = list->proc[j]; \
                 char name_buf[100]; \
-                int k = 0; \
+                i = 0; \
                 while(data != -1){ \
                     libread(caller, memrg, i, &data); \
                     name_buf[i]= data; \
@@ -50,7 +50,6 @@ int __sys_killall(struct pcb_t *caller, struct sc_regs* regs)
                 if (strcmp(name_buf, proc_name) == 0) { \
                     printf("Terminating process: %s (pid=%d)\n", name_buf, proc->pid); \
                     libfree(proc, proc->pid); \
-                    list->proc[j] = null; \
                 } \
             } \
         } \
