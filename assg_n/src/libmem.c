@@ -85,9 +85,9 @@
  
      /* Prepare system call to increase VMA limit */
      struct sc_regs regs;
-     regs.a1 = vmaid;         /* VMA ID */
-     regs.a2 = inc_sz;        /* Size to increase */
-     regs.a3 = SYSMEM_INC_OP; /* Operation: increase limit */
+     regs.a1 = SYSMEM_INC_OP; /* Operation: increase limit */
+     regs.a2 = vmaid;         /* VMA ID */
+     regs.a3 = inc_sz;        /* Size to increase */
  
      /* Invoke sys_memmap syscall (number 17) */
      int inc_limit_ret = syscall(caller, 17, &regs);
@@ -158,9 +158,13 @@
      /* By default using vmaid = 0 */
      if (__alloc(proc, 0, reg_index, size, &addr) == 0)
      {
+        printf("===== PHYSICAL MEMORY AFTER ALLOCATION =====\n");
+        printf("PID=%d - Region=%d - Address=%d - Size=%d byte\n",proc->pid, reg_index, addr, size);
+        print_pgtbl(proc, 0, -1);
+
          return addr; /* Return the allocated address */
      }
- 
+
      return 0; /* Return 0 on failure */
  }
  
@@ -202,9 +206,9 @@
  
          /* Swap victim frame to swap */
          struct sc_regs regs;
-         regs.a1 = vicfpn;        /* Source: victim physical frame */
-         regs.a2 = swpfpn;        /* Destination: swap frame */
-         regs.a3 = SYSMEM_SWP_OP; /* Operation: swap */
+         regs.a2 = vicfpn;        /* Source: victim physical frame */
+         regs.a3 = swpfpn;        /* Destination: swap frame */
+         regs.a1 = SYSMEM_SWP_OP; /* Operation: swap */
  
          /* SYSCALL 17 sys_memmap */
          if (syscall(caller, 17, &regs) != 0)
@@ -217,9 +221,9 @@
          int tgtfpn = PAGING_PTE_SWP(pte); /* Target frame in swap */
          if (tgtfpn != 0)                  /* Only swap if target is in swap */
          {
-             regs.a1 = tgtfpn;        /* Source: target swap frame */
-             regs.a2 = vicfpn;        /* Destination: victim’s physical frame */
-             regs.a3 = SYSMEM_SWP_OP; /* Operation: swap */
+             regs.a2 = tgtfpn;        /* Source: target swap frame */
+             regs.a3 = vicfpn;        /* Destination: victim’s physical frame */
+             regs.a1 = SYSMEM_SWP_OP; /* Operation: swap */
  
              /* SYSCALL 17 sys_memmap */
              if (syscall(caller, 17, &regs) != 0)
@@ -255,9 +259,9 @@
  
      /* Read byte from physical memory using syscall */
      struct sc_regs regs;
-     regs.a1 = phyaddr;        /* Physical address to read */
-     regs.a2 = 0;              /* Unused or buffer address */
-     regs.a3 = SYSMEM_IO_READ; /* Operation: read byte */
+     regs.a2 = phyaddr;        /* Physical address to read */
+     regs.a3 = 0;              /* var to store value when read */
+     regs.a1 = SYSMEM_IO_READ; /* Operation: read byte */
  
      /* SYSCALL 17 sys_memmap */
      int result = syscall(caller, 17, &regs);
@@ -265,7 +269,7 @@
          return -1; /* Read failed */
  
      /* Update data with the read value */
-     *data = (BYTE)regs.a1; /* Assume syscall returns value in a1 */
+     *data = (BYTE)regs.a3; /* Assume syscall returns value in a1 */
      return 0;
  }
  
@@ -288,9 +292,9 @@
  
      /* Write byte to physical memory using syscall */
      struct sc_regs regs;
-     regs.a1 = phyaddr;         /* Physical address to write */
-     regs.a2 = value;           /* Value to write */
-     regs.a3 = SYSMEM_IO_WRITE; /* Operation: write byte */
+     regs.a2 = phyaddr;         /* Physical address to write */
+     regs.a3 = value;           /* Value to write */
+     regs.a1 = SYSMEM_IO_WRITE; /* Operation: write byte */
  
      /* SYSCALL 17 sys_memmap */
      if (syscall(caller, 17, &regs) != 0)
@@ -445,7 +449,6 @@
                  struct vm_rg_struct *remainder = malloc(sizeof(struct vm_rg_struct));
                  if (remainder == NULL)
                  {
-                     pthread_mutex_unlock(&mmvm_lock);
                      return -1; /* Allocation failed */
                  }
                  remainder->rg_start = curr->rg_start + size;
@@ -473,6 +476,5 @@
          curr = curr->rg_next;
      }
  
-     pthread_mutex_unlock(&mmvm_lock);
      return -1;
  }
