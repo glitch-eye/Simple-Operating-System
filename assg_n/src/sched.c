@@ -48,22 +48,14 @@ void init_scheduler(void) {
  */
 struct pcb_t * get_mlq_proc(void) {
 	struct pcb_t * proc = NULL;
-    static int curr_prio = 0; // Current priority level being traversed
 
     pthread_mutex_lock(&queue_lock);
     if (queue_empty() != 1) {
         for (int i = 0; i < MAX_PRIO; i++) {
-            int prio = (curr_prio + i) % MAX_PRIO; // Circular traversal of priorities
-            
             // Check if there's a process in the queue and slots available
-            if (!empty(&mlq_ready_queue[prio]) && slot[prio] > 0) {
-                proc = dequeue(&mlq_ready_queue[prio]); // Get the process
-                slot[prio]--; // Decrement the slot for this priority
-
-                // If slots for this priority are exhausted, move to the next priority
-                if (slot[prio] == 0) {
-                    curr_prio = (prio + 1) % MAX_PRIO; // Move to the next priority
-                }
+            if (!empty(&mlq_ready_queue[i]) && slot[i] > 0) {
+                proc = dequeue(&mlq_ready_queue[i]); // Get the process
+                slot[i]--; // Decrement the slot for this priority
                 break;
             }
         }

@@ -10,6 +10,7 @@ CC = gcc
 DEBUG = -g
 CFLAGS = -Wall -c $(DEBUG)
 LFLAGS = -Wall $(DEBUG)
+
 vpath %.c $(SRC)
 vpath %.h $(INCLUDE)
 
@@ -22,7 +23,7 @@ OS_OBJ = $(addprefix $(OBJ)/, cpu.o mem.o loader.o queue.o os.o sched.o timer.o 
 OS_OBJ += $(SYSCALL_OBJ)
 SCHED_OBJ = $(addprefix $(OBJ)/, cpu.o loader.o)
 HEADER = $(wildcard $(INCLUDE)/*.h)
- 
+
 all: os
 #mem sched os
 
