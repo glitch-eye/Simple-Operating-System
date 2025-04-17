@@ -88,7 +88,7 @@ void put_proc(struct pcb_t * proc) {
 	proc->running_list = & running_list;
 	/* TODO: put running proc to running_list */
 	
-	// enqueue(&running_list, proc);
+	enqueue(&running_list, proc);
 	pthread_mutex_unlock(&queue_lock);	
 	return put_mlq_proc(proc);
 }
@@ -101,7 +101,7 @@ void add_proc(struct pcb_t * proc) {
 
 	/* TODO: put running proc to running_list */
 	
-	// enqueue(&running_list, proc);
+	enqueue(&running_list, proc);
 	pthread_mutex_unlock(&queue_lock);	
 	return add_mlq_proc(proc);
 }

@@ -343,6 +343,7 @@ int print_pgtbl(struct pcb_t *caller, uint32_t start, uint32_t end)
           printf("Page Number: %d -> Frame Number: %d\n",pagenum, fpn);
       }
   }
+  printf("================================================================\n");
   return 0;
 }
 

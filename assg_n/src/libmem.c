@@ -60,7 +60,6 @@
  int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr)
  {
      struct vm_rg_struct rgnode;
- 
      /* Try to allocate from a free virtual memory region */
      if (get_free_vmrg_area(caller, vmaid, size, &rgnode) == 0)
      {
@@ -102,8 +101,9 @@
  
      /* Commit the allocation address and update symbol table */
      *alloc_addr = old_sbrk;
-     caller->mm->symrgtbl[rgid].rg_start = old_sbrk;
-     caller->mm->symrgtbl[rgid].rg_end = old_sbrk + size;
+     get_free_vmrg_area(caller, vmaid, size, &rgnode);
+     caller->mm->symrgtbl[rgid].rg_start = rgnode.rg_start;
+     caller->mm->symrgtbl[rgid].rg_end = rgnode.rg_end;
  
      pthread_mutex_unlock(&mmvm_lock);
      return 0;
@@ -141,7 +141,7 @@
  
      /* Enlist the obsoleted memory region to the free list */
      enlist_vm_freerg_list(caller->mm, rgnode);
- 
+     print_pgtbl(caller, 0, -1);
      pthread_mutex_unlock(&mmvm_lock);
      return 0;
  }
@@ -159,7 +159,8 @@
      if (__alloc(proc, 0, reg_index, size, &addr) == 0)
      {
         printf("===== PHYSICAL MEMORY AFTER ALLOCATION =====\n");
-        printf("PID=%d - Region=%d - Address=%d - Size=%d byte\n",proc->pid, reg_index, addr, size);
+
+        printf("PID=%d - Region=%d - Address=%08X - Size=%d byte\n",proc->pid, reg_index, addr, size);
         print_pgtbl(proc, 0, -1);
 
          return addr; /* Return the allocated address */
@@ -174,7 +175,9 @@
   */
  int libfree(struct pcb_t *proc, uint32_t reg_index)
  {
+    printf("===== PHYSICAL MEMORY AFTER DEALLOCATION =====\n");
      /* By default using vmaid = 0 */
+    printf("PID=%d - Region=%d\n", proc->pid, reg_index);
      return __free(proc, 0, reg_index);
  }
  
@@ -327,6 +330,7 @@
      int val = __read(proc, 0, source, offset, &data);
  
      *destination = (val == 0) ? (uint32_t)data : 0;
+     printf("===== PHYSICAL MEMORY AFTER READING =====\n");
  #ifdef IODUMP
      printf("read region=%d offset=%d value=%d\n", source, offset, data);
  #ifdef PAGETBL_DUMP
@@ -357,6 +361,7 @@
  /* libwrite - PAGING-based write a region memory */
  int libwrite(struct pcb_t *proc, BYTE data, uint32_t destination, uint32_t offset)
  {
+    printf("===== PHYSICAL MEMORY AFTER WRITING =====\n");
  #ifdef IODUMP
      printf("write region=%d offset=%d value=%d\n", destination, offset, data);
  #ifdef PAGETBL_DUMP
@@ -427,7 +432,6 @@
  
      if (rgit == NULL)
          return -1;
- 
      /* Initialize newrg */
      newrg->rg_start = newrg->rg_end = -1;
  
@@ -475,6 +479,5 @@
          prev = curr;
          curr = curr->rg_next;
      }
- 
      return -1;
  }

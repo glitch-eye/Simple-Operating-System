@@ -73,16 +73,13 @@ struct vm_rg_struct *get_vm_area_node_at_brk(struct pcb_t *caller, int vmaid, in
   */
 int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int vmaend)
 {
-  struct vm_area_struct *vma = get_vma_by_num(caller->mm, vmaid);
+  struct vm_area_struct *vma = caller->mm->mmap;
   if(!vma)
   return -1;
-  struct vm_rg_struct *it = vma->vm_freerg_list;
-
-  while (it != NULL) {
-    if (!(vmaend <= it->rg_start || vmastart >= it->rg_end)) {
-      return -1; // Overlap detected
-    }
-    it = it->rg_next;
+  while(!vma){
+    if(OVERLAP(vmastart, vmaend, vma->vm_start, vma->vm_end)== 0 )
+      return -1;
+    vma = vma->vm_next;
   }
 
   return 0;
@@ -117,7 +114,6 @@ int inc_vma_limit(struct pcb_t *caller, int vmaid, int inc_sz)
     return -1;
 
   cur_vma->vm_end = area->rg_end;
-  cur_vma->sbrk = area->rg_end;
 
   area->rg_next = NULL;
   if (cur_vma->vm_freerg_list == NULL)

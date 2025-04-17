@@ -10,6 +10,11 @@ int empty(struct queue_t * q) {
 void enqueue(struct queue_t * q, struct pcb_t * proc) {
         /* TODO: put a new process to queue [q] */
         if (q->size == MAX_QUEUE_SIZE||proc == NULL||q == NULL)  {
+                if(q->size == MAX_QUEUE_SIZE){
+                       dequeue(q);
+                       q->proc[q->size++] =  proc; 
+                       return;
+                }
                 exit(EXIT_FAILURE);
         }
         else {
