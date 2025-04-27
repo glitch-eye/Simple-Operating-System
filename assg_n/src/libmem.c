@@ -302,7 +302,6 @@
      /* SYSCALL 17 sys_memmap */
      if (syscall(caller, 17, &regs) != 0)
          return -1; /* Write failed */
- 
      return 0;
  }
  
@@ -364,12 +363,13 @@
     printf("===== PHYSICAL MEMORY AFTER WRITING =====\n");
  #ifdef IODUMP
      printf("write region=%d offset=%d value=%d\n", destination, offset, data);
- #ifdef PAGETBL_DUMP
+ #endif
+     int ret = __write(proc, 0, destination, offset, data);
+#ifdef PAGETBL_DUMP
      print_pgtbl(proc, 0, -1); // Print max TBL
  #endif
      MEMPHY_dump(proc->mram);
- #endif
-     return __write(proc, 0, destination, offset, data);
+    return ret;
  }
  
  /* free_pcb_memphy - collect all memphy of pcb

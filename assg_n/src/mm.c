@@ -122,8 +122,8 @@ int alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_struc
       if (head == NULL) {
         head = tail = newfp;
       } else {
-        tail->fp_next = newfp;
-        tail = newfp;
+        newfp->fp_next = head;
+        head = newfp;
       }
     } else {
       return -3000; // Out of memory
