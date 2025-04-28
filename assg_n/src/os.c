@@ -57,6 +57,11 @@ static void * cpu_routine(void * args) {
 		 	* ready queue */
 			proc = get_proc();
 			if (proc == NULL) {
+							if (done){
+								/* No process to run, exit */
+								printf("\tCPU %d stopped\n", id);
+								break;
+							}
                            next_slot(timer_id);
                            continue; /* First load failed. skip dummy load */
                         }
