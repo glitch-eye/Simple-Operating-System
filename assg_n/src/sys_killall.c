@@ -35,27 +35,30 @@ int __sys_killall(struct pcb_t *caller, struct sc_regs* regs)
     }
     printf("The procname retrieved from memregionid %d is \"%s\"\n", memrg, proc_name);
 
-    #define TERMINATE_MATCHING(list) \
-        if (!empty(list)) { \
-            for (int j = 0; j < list->size; j++) { \
-                struct pcb_t *proc = list->proc[j]; \
-                char name_buf[100]; \
-                i = 0; \
-                while(data != -1){ \
-                    libread(caller, memrg, i, &data); \
-                    name_buf[i]= data; \
-                    if(data == -1) name_buf[i]='\0'; \
-                    i++; \
-                } \
-                if (strcmp(name_buf, proc_name) == 0) { \
-                    printf("Terminating process: %s (pid=%d)\n", name_buf, proc->pid); \
-                    libfree(proc, proc->pid); \
-                } \
-            } \
-        } \
-
-    TERMINATE_MATCHING(caller->running_list);
-    TERMINATE_MATCHING(caller->mlq_ready_queue);
+    char term_name[100];
+    if (empty(caller->running_list) != 0)
+    for (int j=0; j<caller->running_list->size;j++) {
+        while(data != -1){
+            libread(caller->running_list->proc[j],memrg,i,&data);
+            term_name[i] = data;
+            if(data == -1) proc_name[i]='\0';
+            i++;
+        }
+        if (strcmp(term_name,proc_name)==1) 
+            libfree(caller->running_list->proc[j],caller->running_list->proc[j]->pid);
+    }
+    
+    if (empty(caller->mlq_ready_queue) != 0)
+    for (int j=0; j<caller->mlq_ready_queue->size;j++) {
+        while(data != -1){
+            libread(caller->mlq_ready_queue->proc[j],memrg,i,&data);
+            term_name[i] = data;
+            if(data == -1) proc_name[i]='\0';
+            i++;
+        }
+        if (strcmp(term_name,proc_name)==1) 
+            libfree(caller->mlq_ready_queue->proc[j],caller->mlq_ready_queue->proc[j]->pid);
+    }
 
     /* TODO: Traverse proclist to terminate the proc
      *       stcmp to check the process match proc_name
