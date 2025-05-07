@@ -17,6 +17,16 @@
  #include <stdio.h>
  #include <pthread.h>
  static pthread_mutex_t mmvm_lock = PTHREAD_MUTEX_INITIALIZER;
+ print_free_list(struct mm_struct *mm, int vmaid,  int rgid){
+    struct vm_rg_struct *curr = get_vma_by_num(mm, vmaid)->vm_freerg_list;
+    printf("Region ID = %d is released\n",rgid);
+    int i = 0;
+     while (curr != NULL)
+     {
+        printf("Freeing list %d ,range(%lu, %lu)\n",i++, curr->rg_start, curr->rg_end);
+        curr = curr->rg_next;
+     }
+ }
  
  /* enlist_vm_freerg_list - add new rg to freerg_list
   *@mm: memory region
@@ -142,6 +152,7 @@
      /* Enlist the obsoleted memory region to the free list */
      enlist_vm_freerg_list(caller->mm, rgnode);
      print_pgtbl(caller, 0, -1);
+     print_free_list(caller->mm, vmaid, rgid);
      pthread_mutex_unlock(&mmvm_lock);
      return 0;
  }
@@ -153,6 +164,7 @@
   */
  int liballoc(struct pcb_t *proc, uint32_t size, uint32_t reg_index)
  {
+    pthread_mutex_lock(&mmvm_lock);
      int addr;
  
      /* By default using vmaid = 0 */
@@ -175,6 +187,7 @@
   */
  int libfree(struct pcb_t *proc, uint32_t reg_index)
  {
+    pthread_mutex_lock(&mmvm_lock);
     printf("===== PHYSICAL MEMORY AFTER DEALLOCATION =====\n");
      /* By default using vmaid = 0 */
     printf("PID=%d - Region=%d\n", proc->pid, reg_index);
@@ -190,23 +203,22 @@
  int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
  {
      uint32_t pte = mm->pgd[pgn];
- 
      if (!PAGING_PAGE_PRESENT(pte))
      { /* Page is not online, make it actively living */
          int vicpgn, swpfpn, vicfpn;
          uint32_t vicpte;
  
          /* Find victim page */
-         find_victim_page(caller->mm, &vicpgn);
+         if(find_victim_page(caller->mm, &vicpgn)== -1){
+            return -1;
+         }
          vicpte = mm->pgd[vicpgn];
          vicfpn = PAGING_FPN(vicpte);
- 
          /* Get free frame in MEMSWP */
          if (MEMPHY_get_freefp(caller->active_mswp, &swpfpn) != 0)
          {
              return 0; /* No free swap frame */
          }
- 
          /* Swap victim frame to swap */
          struct sc_regs regs;
          regs.a2 = vicfpn;        /* Source: victim physical frame */
@@ -238,7 +250,6 @@
          pte_set_fpn(&mm->pgd[pgn], vicfpn);
          enlist_pgn_node(&caller->mm->fifo_pgn, pgn);
      }
- 
      *fpn = PAGING_FPN(mm->pgd[pgn]);
      return 0;
  }
@@ -253,11 +264,9 @@
      int pgn = PAGING_PGN(addr);
      int off = PAGING_OFFST(addr);
      int fpn;
- 
      /* Get the page to MEMRAM, swap from MEMSWAP if needed */
      if (pg_getpage(mm, pgn, &fpn, caller) != 0)
          return -1; /* Invalid page access */
- 
      int phyaddr = (fpn << 12) + off; /* Frame number * page size + offset */
  
      /* Read byte from physical memory using syscall */
@@ -312,10 +321,12 @@
   *@rgid: memory region ID (used to identify variable in symbol table)
   */
  int __read(struct pcb_t *caller, int vmaid, int rgid, int offset, BYTE *data)
- {
+ {  
      struct vm_rg_struct *currg = get_symrg_byid(caller->mm, rgid);
      struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
- 
+     if(currg->rg_start + offset > currg->rg_end){
+        return -1;
+     }
      if (currg == NULL || cur_vma == NULL) /* Invalid memory identify */
          return -1;
  
@@ -325,6 +336,7 @@
  /* libread - PAGING-based read a region memory */
  int libread(struct pcb_t *proc, uint32_t source, uint32_t offset, uint32_t *destination)
  {
+    pthread_mutex_lock(&mmvm_lock);
      BYTE data;
      int val = __read(proc, 0, source, offset, &data);
  
@@ -337,6 +349,8 @@
  #endif
      MEMPHY_dump(proc->mram);
  #endif
+    pthread_mutex_unlock(&mmvm_lock);
+    if(val == -1) printf("But Failed\n");
      return val;
  }
  
@@ -350,6 +364,9 @@
  {
      struct vm_rg_struct *currg = get_symrg_byid(caller->mm, rgid);
      struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
+     if(currg->rg_start + offset > currg->rg_end){
+        return -1;
+     }
  
      if (currg == NULL || cur_vma == NULL) /* Invalid memory identify */
          return -1;
@@ -360,6 +377,7 @@
  /* libwrite - PAGING-based write a region memory */
  int libwrite(struct pcb_t *proc, BYTE data, uint32_t destination, uint32_t offset)
  {
+    pthread_mutex_lock(&mmvm_lock);
     printf("===== PHYSICAL MEMORY AFTER WRITING =====\n");
  #ifdef IODUMP
      printf("write region=%d offset=%d value=%d\n", destination, offset, data);
@@ -369,6 +387,8 @@
      print_pgtbl(proc, 0, -1); // Print max TBL
  #endif
      MEMPHY_dump(proc->mram);
+     pthread_mutex_unlock(&mmvm_lock);
+     if(ret == -1) printf("But Failed\n");
     return ret;
  }
  
@@ -408,10 +428,8 @@
      struct pgn_t *pg = mm->fifo_pgn;
      if (pg == NULL)
          return -1;
- 
      struct pgn_t *victim = mm->fifo_pgn;
      *retpgn = victim->pgn; /* Return victim page number */
- 
      /* Update FIFO list by removing the head */
      mm->fifo_pgn = victim->pg_next;
  

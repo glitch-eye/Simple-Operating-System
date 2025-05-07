@@ -79,7 +79,6 @@
  
     if (mp == NULL)
        return -1;
- 
     if (!mp->rdmflg)
        return -1; /* Not compatible mode for sequential read */
  

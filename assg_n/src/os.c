@@ -79,7 +79,6 @@ static void * cpu_routine(void * args) {
 			put_proc(proc);
 			proc = get_proc();
 		}
-		
 		/* Recheck process status after loading new process */
 		if (proc == NULL && done) {
 			/* No process to run, exit */
