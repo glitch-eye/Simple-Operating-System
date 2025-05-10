@@ -324,7 +324,7 @@ void print_free_list(struct mm_struct *mm, int vmaid,  int rgid){
  {  
      struct vm_rg_struct *currg = get_symrg_byid(caller->mm, rgid);
      struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
-     if(currg->rg_start * 8 + offset >= currg->rg_end * 8){
+     if(currg->rg_start + offset > currg->rg_end){
         return -1;
      }
      if (currg == NULL || cur_vma == NULL) /* Invalid memory identify */
@@ -364,7 +364,7 @@ void print_free_list(struct mm_struct *mm, int vmaid,  int rgid){
  {
      struct vm_rg_struct *currg = get_symrg_byid(caller->mm, rgid);
      struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
-     if(currg->rg_start * 8 + offset >= currg->rg_end * 8){
+     if(currg->rg_start + offset > currg->rg_end){
         return -1;
      }
  
