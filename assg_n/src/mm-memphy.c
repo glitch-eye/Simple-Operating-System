@@ -14,6 +14,39 @@
   *  @mp: memphy struct
   *  @offset: offset
   */
+ /*
+ * find_virtual_address - Tìm địa chỉ ảo từ địa chỉ vật lý
+ * @proc: Tiến trình sở hữu không gian địa chỉ
+ * @physical_addr: Địa chỉ vật lý từ MEMPHY_dump
+ * @virtual_addr: Con trỏ để lưu địa chỉ ảo tương ứng
+ * @rgid: Con trỏ để lưu region ID (nếu cần)
+ * Trả về: 0 nếu thành công, -1 nếu không tìm thấy
+ */
+int find_virtual_address(struct pcb_t *proc, int physical_addr, addr_t *virtual_addr, int *rgid) {
+   struct mm_struct *mm = proc->mm;
+   int fpn = physical_addr / PAGING_PAGESZ; // Tính FPN từ địa chỉ vật lý
+   int offset = physical_addr % PAGING_PAGESZ; // Offset trong trang
+
+   // Duyệt qua bảng trang (pgd) để tìm VPN tương ứng với FPN
+   for (int pgn = 0; pgn < PAGING_MAX_PGN; pgn++) {
+       uint32_t pte = mm->pgd[pgn];
+       if (PAGING_PAGE_PRESENT(pte) && PAGING_FPN(pte) == fpn) {
+           // Tìm thấy trang ảo (VPN) ánh xạ tới FPN
+           *virtual_addr = (pgn * PAGING_PAGESZ) + offset;
+
+           // Tìm region ID (rgid) chứa địa chỉ ảo này
+           for (int i = 0; i < PAGING_MAX_SYMTBL_SZ; i++) {
+               struct vm_rg_struct *rg = &mm->symrgtbl[i];
+               if (rg->rg_start <= *virtual_addr && *virtual_addr < rg->rg_end) {
+                   *rgid = i;
+                   return 0; // Thành công
+               }
+           }
+           return -1; // Không tìm thấy vùng bộ nhớ
+       }
+   }
+   return -1; // Không tìm thấy ánh xạ
+}
  int MEMPHY_mv_csr(struct memphy_struct *mp, int offset)
  {
     int numstep = 0;

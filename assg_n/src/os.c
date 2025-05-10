@@ -190,10 +190,17 @@ static void read_config(const char * path) {
 		strcat(ld_processes.path[i], "input/proc/");
 		char proc[100];
 #ifdef MLQ_SCHED
-		fscanf(file, "%lu %s %lu\n", &ld_processes.start_time[i], proc, &ld_processes.prio[i]);
+		if (fscanf(file, "%lu %s %lu\n", &ld_processes.start_time[i], proc, &ld_processes.prio[i]) != 3) {
+			fprintf(stderr, "Failed to read data for process %d\n", i);
+			exit(EXIT_FAILURE);
+		}
 #else
-		fscanf(file, "%lu %s\n", &ld_processes.start_time[i], proc);
+		if(fscanf(file, "%lu %s\n", &ld_processes.start_time[i], proc) != 2){
+			fprintf(stderr, "Failed to read data for process %d\n", i);
+			exit(EXIT_FAILURE);
+		}
 #endif
+
 		strcat(ld_processes.path[i], proc);
 	}
 }

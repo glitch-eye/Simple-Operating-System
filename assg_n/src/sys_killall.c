@@ -17,7 +17,7 @@
  
  #define MAX_MLQ_PRIORITIES 140 // 140 priority levels for mlq_ready_queue
  int static success = 0;
- static char *get_proc_name_frompath(const char *path) {
+ static const char *get_proc_name_frompath(const char *path) {
     if (!path || path[0] == '\0') {
         printf("Warning: Invalid path '%s', returning empty name\n", path ? path : "(null)");
         return ""; // Return empty string for NULL or empty path
@@ -100,7 +100,7 @@
                  proc = dequeue(queue); /* Dequeue front process (MLQ_SCHED mode) */ \
                  if (!proc) continue; /* Skip invalid process */ \
                  char *name = get_proc_name_frompath(proc->path); \
-                 if (strcmp(name, proc_name) == 0) { \
+                 if (strcmp(name, proc_name) == 0 && name !="") { \
                      /* Suitable process: terminate it */ \
                      printf("Terminating process: %s (pid=%d, path=%s)\n", name, proc->pid, proc->path); \
                      if( already_freed == 0 ){\

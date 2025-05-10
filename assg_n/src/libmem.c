@@ -17,7 +17,7 @@
  #include <stdio.h>
  #include <pthread.h>
  static pthread_mutex_t mmvm_lock = PTHREAD_MUTEX_INITIALIZER;
- print_free_list(struct mm_struct *mm, int vmaid,  int rgid){
+void print_free_list(struct mm_struct *mm, int vmaid,  int rgid){
     struct vm_rg_struct *curr = get_vma_by_num(mm, vmaid)->vm_freerg_list;
     printf("Region ID = %d is released\n",rgid);
     int i = 0;
